@@ -1,0 +1,808 @@
+---
+title: "Test projekt"
+author: "Kristian Hungeberg"
+date: "2024-03-08"
+output: rmdformats::readthedown
+includes:
+      in_header: header.tex
+header-includes:
+  - \usepackage{amsmath}
+---
+# Packages 
+
+```{r}
+library(tidyverse) ## For most data wrangling and visualization
+library(gridExtra) ## For grids of plots
+library(broom) ## For summarising statistical objects
+library(moderndive) ## For datasets and bootstrapping
+library(glue) ## string tools 
+library(readxl) ## read excel sheets 
+library(ggridges) ## For ridgeplots
+library(car) ## For levenetest
+library(logistf) ## For logistic regression
+library(rmdformats)
+```
+
+# Notes on display and layout
+
+Theme: There are several themes in rmarkdown. I've found that the readthedown theme from the rmdformats package is good. 
+Also just in general, check the rmdformats package out. 
+
+Illustrations per test: For every test statistic we want to display the distribution under the relevant parameters. There will of course be some repetitions but as this will also serve as a lookup document for statistical tests it will be alright. Furthermore we also want to illustrate and example. Here we want to show that given the assumptions and true or untrue hypotheses the test will return a high or low p-value. Furethermore we should show how the test statistic from the example converges or is close (or not close given untrue null hypothesis) to the theoretical distribution. 
+
+Showing of distribution: For tests that have a common distribution such as all the t-tests and chi squared tests we could show it rather than repeating it for every test. 
+
+Functionality in R: 
+
+It would be nice with some explenation of the code used for each test so the person reading will know how to use the test in R.
+
+# Notes on ideas 
+
+## Parametric tests
+
+## Non parametric tests 
+
+## Miscellaneous
+
+### Binomial approach for median 
+
+We could make a data frame with a column of sample size and then from that make calculate the confidence interval for the median depending on the sample size. Furthermore the length of the confidence interval could also be given and we could see how the length evolves with the sample size. 
+
+# Notes on explanations and derivations
+
+It could be great with some more explanation on the starting conditions such as: "Suppose we had a sample $x_1,x_2,x_3,\ldots x_n$. I think this will give a better understanding of the data you have beforehand. 
+
+Regarding derivations it would be nice with a longer session about why the test statistic follows a given distribution and is in fact a pivotal quantity. 
+
+This will require a few steps, but i believe it will greatly enhance the understanding of the test purpose and null hypothesis. Also the assumptions and perhabs how disruptions in the assumptions affect the distribution. 
+
+This is a very nice idea BUT i think the best thing at the moment is just to put out as many tests you can and when you dont have any more left you can begin on some of the derivations. 
+
+
+# Purpose: 
+
+The purpose of this project is to have a register of the most commonly used methods of testing hypotheses in statistical analysis. It will be split up in the families of Parametric and the non-parametric tests. 
+
+From the description of each test, the reader should know and understand the following: 
+
+#### Purpose of test
+#### Assumptions
+#### Test statistic
+#### Distribution of test statistic
+#### Nulhypothesis 
+#### Robustness of test
+#### Accurate interpretation of test results
+#### Common error and misinterpretation of results. 
+
+# Parametric
+
+## T-test {.tabset}
+
+### Origin
+
+The T-test is probably one of the most famous statistical tests ever made. It's construction was made by the statistician and brewer William Gosset who figured the t-test statistic followed a t-distribution and could be used to test for the difference in means across a small population sample. The purpose of the test is thus to establish whether there are a statisticly significant difference in difference in means across groups or a single sample with a hypothesised mean. 
+
+### One sample t-test 
+
+
+#### Purpose of test
+
+The purpose of the one sample t test is used to test whether a population and a statisticly significant mean compared to a hypothesised true population mean. 
+
+#### Assumptions
+
+ We assume the sample is indenpendent and identically distributed with a finite variance. This ensures that the central limit theorem (CLT) applies and thus $\bar{X} \sim N(\mu,\frac{\sigma^2}{n})$. where $\mu$ is the true population mean
+
+#### Test statistic and distribution
+
+The test statistic of the one sample t-test is given by a$T$ as the name "t-test" would suggest. $$T=\frac{\bar{x}-\mu_0}{\frac{s}{\sqrt{n}}} \quad \text{and} \quad T \sim t_\nu$$ 
+
+Where $t_\nu$ is the t distributiuon with $\nu$ degrees of freedom and since we are calculating only one parameter we have $\nu = n-1$. $\mu_0$ is the hypothesised mean
+
+As one can see from the distribution below, the distribution asymptotically becomes the standard normal distribution as the degrees of freedom goes to infinity. This result i proven and shows why this test was needed for smaller samples. 
+
+```{r}
+## Showing the t-distribution for degrees of freedom from 1 to 5 to 15 to 25 to 30
+
+# Define degrees of freedom to illustrate
+dfs <- c(1, 5, 15, 25, 50)
+
+# Create a data frame for plotting
+t_data <- data.frame(x = seq(-4, 4, length.out = 1000))
+for(df in dfs) {
+  t_data[[paste("df", df, sep = "_")]] <- dt(t_data$x, df)
+}
+
+# Convert data from wide to long format for ggplot
+t_data_long <- tidyr::pivot_longer(t_data, cols = starts_with("df"), names_to = "DegreesOfFreedom", values_to = "Density")
+t_data_long$DegreesOfFreedom <- factor(t_data_long$DegreesOfFreedom, levels = paste("df", dfs, sep = "_"))
+
+# Plot the density curves
+ggplot(t_data_long, aes(x = x, y = Density, color = DegreesOfFreedom)) +
+  geom_line() +
+  labs(title = "Density Curves of the t-Distribution",
+       subtitle = "Coloured by Degrees of Freedom",
+       x = "Value",
+       y = "Density",
+       color = "Degrees of Freedom") +
+  theme_minimal() +
+  scale_color_brewer(palette = "Spectral") # Use a color palette that's visually appealing
+```
+
+
+#### Null hypothesis 
+
+The null hypothesis is $H_0:\mu=\mu_0$.Assuming that the hypothesised mean $\mu$ is true and if the assumptions are correct, then our test statistic $T$ follows the t-distribution and we the probability of measuring the sample mean under the nullhypothesis. 
+
+Depending on the alternative hypothesis (i.e whether the $H_A:\mu>\mu_0$ or $H_A:\mu<\mu_0$ $H_A:\mu=\mu_0$) we get a different p-value. 
+
+----------------- This could be explained more with some plots.
+
+#### Robustness of test
+
+Quote from article:
+"The breakdown point of an estimator is the proportion of arbitrarily incorrect observations that estimator can handle before giving an arbitrarily incorrect result"
+
+
+
+#### Accurate interpretation of test results
+
+The result of the one sample 
+
+As with any statistical test's p-value, the result does not show whether the null hypothesis or the alternative hypothesis is true, but rather how likely it would be to observe the sample if the null hypothesis was true. 
+
+
+#### R-functionality
+
+To produce a one sample t test, we simply use the function t.test(). This function is by default a one sample t-test if our input is a single vector which it assumes if our sample. 
+
+```{r}
+### Random sample
+
+n <- 5 ## Sample size 
+
+sample <- rnorm(5,2.5) ## sampled from normal distribution with mean=5 and sd=1
+
+
+## Calculate the statistic with correctly hypothesised mean.
+
+sample_mean <- mean(sample)
+
+sample_sd <- sd(sample)
+
+mu_0 <- 2.5
+
+t_statistic <- (sample_mean-mu_0)/(sample_sd/sqrt(n))
+
+t_statistic ## Print statistic
+
+sample_mean+c(-1,1)*(qt(0.975,df=n-1)*(sample_sd/sqrt(n))) ## Produce 95 percent confint.
+
+2*(1-(pt(t_statistic,df = n-1))) # P-value
+
+
+## Now we can produce the samle via the t.test function 
+
+## Perform the test where we guess the correct mean 
+
+test_result <- t.test(sample,mu=mu_0)
+
+## Investigate result. 
+
+test_result
+
+```
+
+### Two sample (Assumed equal variance)
+
+#### Purpose of test
+
+The purpose of the two sample t-test is to analyse whether the means of two sampling distributions are equal. 
+
+#### Assumptions
+
+The assumptions for two sample t-test from samples with equal variance are the following: 
+
+Normality of sample distributions. For larger samples this will become irrelevant as CLT states the means and difference in means will follow a normal distribution. 
+
+Independence of samples: The samples should be independent from eachother 
+
+Equal variance (Also called homoscedasticity)
+
+Population standard deviation is not known. 
+
+#### Test statistic and distribution
+
+Since we do not now the standard deviation of the difference in means we have to approximate it. The approximate is the following: $s_p = \sqrt{\frac{(n_x-1)s_x^2+(n_y-1)s_y^2}{n_x+n_y-2}}$. Thus the estimate for the standard error becomes: 
+$SE(\bar{x}-\bar{y})=\sqrt{s_p^2(\frac{1}{n_x}+\frac{1}{n_y})}$ which leaves us with the t-test statistic of the difference in means being: $$T=\frac{(\bar{x}-\bar{y})-(\mu_x-\mu_y)}{SE(\bar{x}-\bar{y})}$$. 
+
+A note here is that this is the same test statistic having assumed unequal variance. The difference between the two is the estimation of the standard error or more specific the pooled variance. 
+
+As with any t-test, we get the t-distribution. But now the degrees of freedom is $\nu = n_x+n_y-2$ because we have 2 parameters to calculate. The mean sample x and sample y.
+
+#### Null hypothesis 
+
+The null hypothesis is that the difference in means are equal across the two samples and thus the test statistic is symmetric around 0.
+
+#### Robustness of test
+
+The test is still robust as the samples can be from an approximate normal distributions but it is not as robust as the one sample t-test since we now also need to assume the other sample is normal as well. 
+
+#### Accurate interpretation of test results
+#### Common error and misinterpretation of results. 
+
+#### Functionality in R
+
+As with the one sample t test we compute the statistic, confidence interval and p-value. 
+
+```{r}
+## Sample sizes and samples
+
+n_1 <- 5
+
+n_2 <- 7 
+
+samp1 <- rnorm(n_1,5,2)
+
+samp2 <- rnorm(n_2,6,2)
+
+## Calculate parameters
+
+mu_1 <-  mean(samp1); mu_2 <- mean(samp2)
+
+sd_1 <- sd(samp1) ; sd_2 <- sd(samp2)
+
+s_p <- sqrt(((n_1-1)*sd_1^2+(n_2-1)*sd_2^2)/(n_1+n_2-2)) # Pooled variance
+
+se <- s_p*sqrt(1/n_1+1/n_2)
+
+deg_f <- n_1+n_2-2
+
+## Calculate statistic, confidence interval, p-value
+
+t_stat <- (mu_1-mu_2)/se ## statistic
+
+t_stat
+
+((mu_1-mu_2)+c(1,-1)*(qt(0.975,df = deg_f)*se)) %>% sort() ## Confidence interval
+
+2*(pt(abs(t_stat),df=deg_f,lower.tail = F)) # P value
+
+
+## Use t.test() for the two sample t test with equal variance
+
+test_result <- t.test(samp1,samp2,var.equal=T)
+
+test_result
+```
+
+### Two sample (Assumed non equal variance)
+
+#### Purpose of test
+
+The purpose of the two sample t-test is to analyse whether the means of two sampling distributions are equal. 
+
+#### Assumptions
+
+The assumptions for two sample t-test from samples with unequal variance are the following: 
+
+* Normality of sample distributions. For larger samples this will become irrelevant as CLT states the means and difference in means will follow a normal distribution. 
+
+* Independence of samples: The samples should be independent from each other 
+
+* not equal variance 
+
+* Population standard deviation is not known. 
+
+#### Test statistic and distribution
+
+Since we do not now the standard deviation of the difference in means we have to approximate it. The approximate is simply the standard deviation of the difference between two random variables: $\sigma_{\bar{x}-\bar{x}} = \sqrt{\frac{\sigma_x^2}{n_x}+\frac{\sigma_y^2}{n_y}}$. Thus the estimate for the standard error becomes: $SE(\bar{x}-\bar{y}) = \sqrt{\frac{s_x^2}{n_x}+\frac{s_y^2}{n_y}}$  which leaves us with the t-test statistic of the difference in means being: $$T=\frac{(\bar{x}-\bar{y})-(\mu_x-\mu_y)}{SE(\bar{x}-\bar{y})}$$. 
+
+A note here is that this is the same test statistic having assumed equal variance. The difference between the two is the estimation of the standard error  
+
+As with any t-test, we get the t-distribution. But now the degrees of freedom is calculated by the formula: 
+
+
+#### Null hypothesis 
+
+The null hypothesis is that the difference in means are equal across the two samples and thus the test statistic is symmetric around 0.
+
+#### Robustness of test
+
+The test is still robust as the samples can be from an approximate normal distributions but it is not as robust as the one sample t-test since we now also need to assume the other sample is normal as well. 
+#### Accurate interpretation of test results
+
+The p-value we get from the test shows the possibility of observing the sample we have given at true null hyopothesis. 
+Thus if we hypothesise that the mean of each sample is the same, then the p-value will show the probability of observing the difference in means given that the means are actually the same. 
+#### Common error and misinterpretation of results. 
+
+Significant results doesn't mean that the null hypothesis is true, but rather observing the results of the samples given a true hypothesis is very unlikely. 
+
+#### Functionality in R
+
+
+```{r}
+## Sample sizes and samples
+
+n_1 <- 5
+
+n_2 <- 7 
+
+samp1 <- rnorm(n_1,5,2)
+
+samp2 <- rnorm(n_2,6,4)
+
+## Calculate parameters
+
+mu_1 <-  mean(samp1); mu_2 <- mean(samp2)
+
+sd_1 <- sd(samp1) ; sd_2 <- sd(samp2)
+
+se <- sqrt(sd_1^2/n_1+sd_2^2/n_2)
+
+deg_f <-((sd_1^2/n_1+sd_2^2/n_2)^2)*((((sd_1^2/n_1)^2)/(n_1-1)+((sd_2^2/n_2)^2)/(n_2-1))^(-1)) ## Absurd df estimate
+
+## Calculate statistic, confidence interval, p-value
+
+t_stat <- (mu_1-mu_2)/se ## statistic
+
+t_stat
+
+((mu_1-mu_2)+c(1,-1)*(qt(0.975,df = deg_f)*se)) %>% sort() ## Confidence interval
+
+2*(pt(abs(t_stat),df=deg_f,lower.tail = F)) # P value
+
+
+## Use t.test() for the two sample t test with equal variance
+
+test_result <- t.test(samp1,samp2,var.equal=F)
+
+test_result
+```
+
+### Paired t-test
+
+#### Purpose of test
+
+sometimes our two samples are not independen. Think of having samples where the order of the samples are the test subjects and suppose for each test subject we have to treatments such that person $j$ has the paired observation $(x_j,y_j)$. 
+
+The idea here is that we now have paired data and we want to check whether there are a significant difference between the means of each treatment. 
+#### Assumptions
+
+* Normality or approximate normality of difference ($X-Y$) distribution
+* Independence of pairs 
+* meaningful pairing
+
+#### Test statistic & Distribution
+
+As with the other two sample test statistics we are calculating a difference in means between the treatments. Thus the test statistic is similar to the other two sample test statistics. 
+The test statistic is: $$T=\frac{(\bar{x}-\bar{y})-(\mu_x-\mu_y)}{\frac{s_{x-y}}{\sqrt{n}}}$$ which is t-distributed with $\nu = n-1$ degrees of freedom where $n$ is the number of test subjects. 
+The standards error of the sample is then simply the sample standard deviation of $X-Y$.  
+
+#### Null hypothesis 
+
+The standard null hypothesis is that there are no difference in means and thus the assumption $H_0:\mu_x=\mu_y$. 
+
+#### Robustness of test
+
+The test is robust regarding the non-normality of the differences in observations, but up until a certain threshold (And what would that be???). 
+
+Outliers could however be problemativ as they have a big effect on the sample mean. 
+#### Accurate interpretation of test results
+
+The test simply measures a difference in means. Thus is not 
+#### Common error and misinterpretation of results. 
+
+#### Functionality in R
+
+```{r}
+### Random sample
+
+n <- 5 ## Sample size 
+
+sample1 <- rnorm(n,2.5) ## sampled from normal distribution with mean=2.5 and sd=1
+
+sample2 <- rnorm(n,5) ## sampled from normal distribution with mean=5 and sd=1
+## Calculate the statistic with correctly hypothesised mean.
+
+sample_diff <- sample1-sample2
+
+samplediff_mean <- mean(sample_diff)
+
+sample_sd <- sd(sample_diff)
+
+mu_1 <- 2.5
+
+mu_2 <- 5
+
+t_statistic <- (samplediff_mean-(mu_1-mu_2))/(sample_sd/sqrt(n))
+
+t_statistic ## Print statistic
+
+samplediff_mean+c(-1,1)*(qt(0.975,df=n-1)*(sample_sd/sqrt(n))) ## Produce 95 percent confint.
+
+2*(pt(t_statistic,df = n-1,lower.tail = F)) # P-value
+
+
+## Now we can produce the samle via the t.test function 
+
+## Perform the test where we guess the correct difference in mean
+
+test_result <- t.test(sample1,sample2,paired=T,mu=mu_1-mu_2)
+
+## Investigate result. 
+
+test_result
+
+
+
+```
+
+## ANOVA
+
+### Origin
+
+### One way ANOVA
+
+#### Purpose of test
+
+Suppose we have some independent normally distributed samples of 3 different groups We would then like to know if the difference in the means across the groups are significant or if the difference observed are due to the natural sampling variance. Thus we are analysing the variance and the means across the groups. This is the purpose of the ANOVA test. 
+
+#### Assumptions
+
+* We assume all samples are normally distributed. 
+
+#### Null hypothesis
+
+Our null hypothesis is that there are no difference in the means across the groups. Thus suppose we have sample $x_{i1},x_{i2},\ldots,x_{in}$ and where $i$ is the index of the group, so we could also have sample of group $j$ noted as $x_{j1},x_{j2},\ldots,x_{jm}$ (So the groups doesn't need the same sample size). 
+
+The null hypothesis is then: 
+
+$$H_0:\mu_1=\mu_2=\ldots = \mu_k \quad H_A:\mu_i\neq \mu_j \quad \text{For some (i,j)}$$
+#### Test statistic and distribution
+
+We make a few calculations across the groups: 
+Let $x_{ij}$ indicate group i observation number j. 
+let $\bar{x}$ be the total mean over all the samples (grand mean)
+let $\bar{x}_i$ be the mean over group i(group mean)
+let $n_i$ be the sample size of group i
+
+$$SST = \sum_{i}\sum_{j}(x_{ij}-\bar{x})^2$$
+$$SSE=\sum_i\sum_j (x_{ij}-\bar{x}_i)^2$$
+
+$$SSTr=\sum_i n_i(\bar{x}_i-\bar{x})^2$$
+
+As can be seen from the calculations we have the following: 
+
+SST: Stands for the total sum of squares and is the sum of all the squared differences to the grand mean. 
+
+SSE: Stands for the total sum of errors and is the sum of all squared differences to the group mean
+
+SSTr: Stands for Treatment sum of errors and is the sum of the squared distances between the group means to the grand mean multiplied by the sample size of group i. 
+
+One can prove that the calculations have the following relationship: $$SST=SSE+SSTr$$
+
+Suppose we now had a boxplot of the samples across the groups. we would specifically see that the SSTr would be big if there were a clear difference in the means across the groups if the alternative was true. 
+
+The test statistic we use is then: 
+
+$$F=\frac{SSTr/(k-1)}{SSE/(n-k)}$$
+Which will follow an F-distribution with $k-1$ and $n-k$ degrees of freedom. 
+
+The p-value is obtained by getting P(F>=observed_value|H_0). 
+
+#### Robustness of test
+
+Since we have a sum of squared error, the test is very sensitive to outliers as it can but off the test statistic by a huge margin. 
+
+If we have two categories, the anova is the same as the two sample t-test and since the t-test is robust so will the anova for at least two cateogories. 
+------ check here how robust the test is for several categories. 
+
+### ANCOVA 
+
+
+
+### Two way ANOVA 
+# non-parametric tests
+
+## Wilcoxon
+
+## Kruskall - Waliss
+
+### Purpose
+
+This is the non parametric "equivalent" to the ANOVA test. Here we test whether the centers of several distributions are equal. 
+
+### Null hypothesis
+
+Suppose we have $k$ groups and sample $x_{ij}$ being observation j of group i. 
+
+
+## Chi squared test {.tabset}
+
+### Origin 
+
+### Distribution
+
+As the name suggests, all chi squared tests follow the chi squared distribution. This distribution only has one parameter, which is the degrees of freedom. In the plot below you can see how the distribution evolves over different parameter values. 
+
+```{r}
+
+# Create a sequence of x values
+x <- seq(0, 15, length.out = 200)
+
+# Degrees of freedom to illustrate
+dfs <- c(1, 2, 4, 6, 9, 12)
+
+# Calculate the density of the Chi-Squared distribution for each degree of freedom
+densities <- lapply(dfs, function(df) dchisq(x, df))
+
+# Convert the list to a data frame for plotting with ggplot2
+df_densities <- data.frame(x, do.call(cbind, densities))
+names(df_densities) <- c("x", paste("df", dfs, sep = "_"))
+
+# Convert from wide format to long format for ggplot2
+df_long <- tidyr::pivot_longer(df_densities, cols = -x, names_to = "DegreesOfFreedom", values_to = "Density")
+
+# Plot the densities
+ggplot(df_long, aes(x = x, y = Density, color = DegreesOfFreedom)) +
+  geom_line() +
+  ylim(0,0.8) +
+  labs(title = "Chi-Squared Distribution for Different Degrees of Freedom",
+       x = "Value",
+       y = "Density") +
+  scale_color_viridis_d(begin = 0.2, end = 0.8, name = "Degrees of\nFreedom", breaks = paste("df", dfs, sep = "_")) +
+  theme_minimal()
+
+```
+
+### Goodness of fit test
+
+#### Purpose
+
+Suppose we have a contingency table (A table of counts) and we have a hypothesis as to what the probability of sampling each category is. As this is a sampling of multiple categories, it follows the multinomial distribution. 
+Getting a probability of the actual sample is simple, but a p-value is much more troublesome as the we have more dimensions in as soon a we are looking at more than 2 categories (ex coin toss). This is where the pearson $\chi^2$-statistic comes into play! 
+As we know we have a multinomial distribution, we also will know that this test statistic (the $\chi^2$-statistic) follows a $\chi^2$ distribution with $k-1$ degrees of freedom, where $k$ is the number of categories. 
+
+To summarise: The chi square goodness of fit test for categorical data is a test of whether a sample observation of counts are likely to occur given a set of hypothesised probabilities. 
+
+More formaly: let $y_1,y_2,\ldots,y_k$ be observed counts of categorical data from a random sample. Suppose they are distributed by the multinomial distribution with probabilities $p_1,p_2,\ldots p_k$. The significance test of the null hypothesis $H_0:p_1=\pi_1,p_2=\pi_2,\ldots p_k=\pi_k$ and alternative hypothesis $p_i\neq\pi_k$ for at least one $0\leq i\leq k$. can be performed with the $\chi^2$-statistic. The $\pi_i$ are the hypothesized probabilities. 
+
+#### Assumptions
+
+* We assume that $y_1,y_2,\ldots y_k$ follow a multinomial distribution, but this will always be the case if it is categorical and we have a random sample. Thus there are no underlying parametric assumption, making this a non-parametric statistical test. 
+
+* We assume that the sampling probabilities of each category is $p_1=\pi_1,p_2=\pi_2,\ldots ,p_k=\pi_k$. 
+
+* For best results it is best to have over 5 counts of each category.(Why though?) 
+
+
+#### Test statistic and distribution
+
+We have some idea about the probabilities/proportions of the counts in the sample. This is usually spoken as "We suppose that the probabilities are $p_1=0.5$, $p_2=0.3$ and $p_3=0.2$" and thus we would have $(\pi_1,\pi_2,\pi_3)=(0.5,0.3,0.2)$ (Remember they have to sum to 1). Our test statistic is then: $$\chi^2=\sum_{i=1}^k\frac{(y_i-np_i)^2}{np_i}$$
+
+Which will be $\chi^2$ distributed with $k-1$ degrees of freedom. 
+
+#### Null hypothesis
+
+The null hypothesis is that our assumption that the $p_i=\pi_i \quad \forall i\leq k$. 
+
+Given that this assumption, the test statistic will follow the chi squared distribution with $k-1$ degrees of freedom. 
+
+The alternative is simply that $p_i \neq \pi_i$ for some $i$. 
+
+#### Robustness of test
+
+As mentioned before, the test is best when we have atleast 5 counts for all categories. That is $y_j\geq 5 \quad \forall j\leq k$. This is to ensure that the test statistic will better follow the chi squared distribution. 
+
+The power of the test also increases. 
+
+#### Accurate interpretation
+
+It is important to note that supposing we reject the null hypothesis it is not necessarily all the assumed probabilities that are wrong.
+
+### Independence test
+
+#### Purpose
+
+In the independence test we have a hypothesis that two categorical varibles are independent. Let's then say we have a table of counts between the variables. Then we want to investigate whether the counts of the variables are supporting the independency betweeen the variables. 
+Suppose we have a contingency table: as below. 
+
+```{r}
+# Load necessary library
+if(!require(dplyr)) install.packages("dplyr")
+
+# Simulate data
+set.seed(123) # for reproducible results
+data <- data.frame(
+  FavoriteSeason = sample(c("Spring", "Summer", "Fall", "Winter"), 100, replace = TRUE),
+  DrinkPreference = sample(c("Coffee", "Tea"), 100, replace = TRUE)
+)
+
+# Create a contingency table
+table <- table(data$FavoriteSeason, data$DrinkPreference)
+
+# Print the table
+print(table)
+```
+
+In the goodness of fit test we have some hypothesised probabilities of the multinomial distribution of the categorical variable. Here we have a hypothesis that the variables are independent, thus we don't have to come up with our own hypothesised probabilities. Let $p_{ij}$ be the probability of seeing category i of the first variable and category j of the second variable. In the example above this could be $p_{21}$ which would be the probability of it being spring and observing someone drinking/prefering coffee. Our question is then: Is your hot beverage preference independent of the seasons? If this was the case, then the $p_{ij}=p^r_ip^c_j$ where $p^r_i$ is the marginal probability of category i and $p^c_j$ is the marginal probability of category j. With the example above $p_{21}$ should be the marginal probability of randomly sampling from spring multiplied with the marginal probability of sampling a coffee drinker. 
+
+#### Assumptions
+
+* We assume that the sample is representative of the population. 
+
+The test is non parametric so we don't have any strong assumptions, but this in turn is one of the strengths of the test. 
+
+
+#### Test statistic and null hypothesis. 
+
+We want to test if $p_{ij}=p^r_ip^c_j$ and ofcourse we do not know the specific $p_{ij}$ beforehand so we use and estimate $\hat{p_{ij}}=\hat{p}^r_i\hat{p}^c_j$. This is sometimes also written as $\frac{R_iC_j}{n}$ where $R_i$ and $C_j$ is the row sum and column sum and $n$ is the sample size. Thus we'll have $\hat{p}_{ij}=\frac{R_iC_j}{n}$. We can the calculate the $\chi^2$ statistic by going through every column and row. Thus we end up with the test statistic: Assume we have $n_r$ rows and $n_c$ columns (i.e $n_r$ and $n_c$ different categories in each variable) 
+
+$$\chi^2=\sum_{i=1}^{n_r}\sum_{j=1}^{n_c}\frac{(y_{ij}-n\hat{p}_{ij})^2}{n\hat{p}_{ij}}$$
+
+
+Which ofcourse will be chi squared distributed, but the degrees of freedom is a bit more troublesome to get around here, but makes sense when you think some more about it. 
+
+We are essentially approximating the parameters $p_{ij}$ for all posible $(i,j)$. Thus we know that the sums of the probabilities along each row and column should give sum up to 1. Thus for each row you will have $n_c-1$ degrees of freedom and for each column you will have $n_r-1$ degrees of freedom. When you look at the contingency table this amounts to giving up 1 row and 1 column of the table. The amount of parameters we will be left with then is $(n_r-1)(n_c-1)$ which will be the degrees of freedom for the chi squared independence test. 
+
+
+----------- Showing a contingency table and how the probabilities are calculated ----- 
+
+
+#### null hypothesis. 
+
+The null and alternative hypothesis is very simple: 
+
+$$H_0:\text{The variables are independent}$$
+
+$$H_A:\text{The variables are not independent}$$
+
+### Homogeneity test
+
+#### Purpose
+
+Suppose we wanted to test whether a drug had an effect. We have a placebo group and a drug group. If our measurement was numerical or continuous we might do a t-test to see if there is a significant difference between the means. Now if our measurement was categorical, such as rating how much better we feel on the likert scale, we would not need another way to test for a difference. This is where the chi squared test for homogeneity comes in because here we test is the distribution is the same across the variables. 
+
+NOTE: This will be the same test statistic as the independence test but how to i interpret this? 
+
+#### Assumptions
+
+* As with every sample we assume it is representative of the population
+
+#### Null hypothesis
+
+The null and alternative hypothesis is simple: 
+
+$$H_0:\text{The distributions are the same}$$
+
+$$H_A:\text{The distributions is not the same}$$
+
+#### Test statistic and distribution
+
+Assuming that the distributions are the same we could look say that $p_{ij}=p_j$ for all $i$ since we would assume the probabilities would not be different across categories. Thus we would expect or estimate $p_{ij}$ as $n_ip_j$ for all $(i,j)$ where $n_i$ is the rowsum. But we must remember that we will also have to estimate $p_j$ which we will do with the column sum (i.e $\hat{p}_{j} = \frac{n_j}{n}$ where $n_j$ is the column sum). Remember then that we then get $\hat{p}_{ij}=\frac{n_in_j}{n}=\frac{R_iC_j}{n}$. Remember that in the independence test we used $R_i,C_j$ for the row and column sum. 
+
+The reason for this callback to the independence test is that we have the same estimate for $p_{ij}$ and thus the statistic is the same and thus we have the test statistic: 
+
+$$\chi^2=\sum_{i=1}^{n_r}\sum_{j=1}^{n_c}\frac{(y_{ij}-n\hat{p}_{ij})^2}{n\hat{p}_{ij}}$$
+where $n_r,n_c$ is the number of categories in each variable.
+
+## Goodness of fit for continuous distributions {.tabset}
+
+### Origin
+
+### Kolmogorov smirnov test 
+
+#### Purpose of test
+
+Suppose we have some sample and we'd like to see if the sample follows some hypothesised continuous distribution. One such test is the Kolmogorov Smirnov (KS) test. The KS test does this by comparing the cummulative distribution function (c.d.f) with the empirical cumulative distribution function (e.c.d.f). The ks-test can also be used for comparing two samples with eachother to see if they follow the same distribution. 
+
+#### Assumptions
+
+* We assume that the sample comes from a continuous distribution
+
+#### Null hypothesis
+
+The null hypothesis if we hypothesise that the sample follows a know continuous distribution is:
+Let $F,F_n$ denote the cdf and ecdf respectively. Then the null and alternative is. 
+$$H_0:F(x)=F_n(x) \quad H_A:F(x)\neq F_n(x)$$
+If we have to iid independent samples $x_1,x_2,\ldots x_n$ and $y_1,y_2,\ldots y_m$ (Notice the samples can have different sizes). Then let $F^X,F^Y$ denote the cdf of sample x and y respectively. Then we have the following null and alternative
+
+$$H_0:F^X(x)=F^Y(x) \quad H_A:F^X(x)\neq F^Y(x)$$
+#### Test statistic and distribution
+
+The test statistic is defined af the biggest difference between the cdf and ecdf or the ecdf of each sample. Thus if we have one sample and hypothesise a continuous distribution it is: 
+$$D=\max_x{|F(x)-F_n(x)|}$$
+And for the two sample ks-test it is: 
+
+$$D=\max_x{|F^X(x)-F^Y(x)|}$$
+
+The cool this about this distance is that assuming the null hypothesis is true, this test statistic follows a know distribution called the Kolmogorov-Smirnov distribution (Surprise)
+
+The distribution can be seen below with some samples of the distribution for 
+
+---- ADD code for sample showoff ---- 
+
+```{r}
+
+```
+
+### Shapiro-Wilk test for normality 
+
+#### Purpose
+
+For the kolmogorov sminov test with univariate data (One sample), then we must specify the exact parameters of the hypothesised distribution (It does NOT work if we just plug in sample estimates of parameters (at least not for small samples)). This is where the Shapiro-Wilk test comes into play. The test is designed such that we don't need to specify the parameters beforehand. 
+
+#### Null hypothesis
+
+Assume we have the sample $x_1,_2,\ldots x_n$ from a continuous distribution. Then the null and alternative is defined as such: 
+$$H_0:\text{Parent distribution is normal} \quad H_A:\text{Parent distribution is not normal} $$
+
+## Binomial confidence interval for the median {.tabset}
+
+### Purpose
+
+The purpose of getting a confidence interval for the median is a way to get an understanding of the wiggleroom of the median as you it could influence a model or relevant consideration in whatever context you have. 
+
+### Assumptions
+
+The median is the number that splits the data in half and such for a random observation we should then assume that the probability of observing a value over or below the median is 0.5. Thus if we let $T$ be the count of observations below the median, then $T$ would follow the binomial distribution (i.e $T \sim Bin(n,0.5)$ where $n$ is the number of observations). 
+
+### Method. 
+
+Since we know that $T \sim Bin(n,0.5)$ we want to find a $1-\alpha$ confidence level interval. But what does this give us? This gives us a confidence interval for the number of observations below and above the median. Thus the actual data is irrelevant. 
+
+```{r}
+## Take sample of crazily distributed r.v 
+bign <- 10^5
+Giant_sample <- log(rnorm(bign,mean=5,sd=25)^2)+rgamma(bign,shape = 10)*rexp(bign,rate = 25)
+
+n <- 25
+
+small_sample <- Giant_sample[1:n]
+
+# Set up confidence interval. 
+
+alpha <- 0.05
+
+qbinom(alpha/2,n,0.5)
+
+### Testing 
+
+sample_size <- c(1:250)*10
+
+med_confint <- tibble(sample_size)
+
+## Take sample for each sample size 
+med_confint <- med_confint %>% 
+  mutate(sample = map(sample_size,~(
+    Giant_sample %>% 
+      sample(size = .x)
+  ))) 
+
+## Construct confidence interval from ordered sample
+
+med_confint <- med_confint %>% 
+  mutate(sample = map(sample,~(sort(.x)))) %>% 
+  mutate(
+    ci_low = map2_dbl(sample_size,sample,~(.y[qbinom(alpha/2,.x,0.5)])),
+    ci_high = map2_dbl(sample_size,sample,~(.y[qbinom(1-alpha/2,.x,0.5)]))
+  ) 
+
+## Construct length of interval
+
+med_confint <- med_confint %>% 
+  mutate(
+    interval_legnth = ci_high-ci_low
+  ) 
+
+med_confint %>% 
+  ggplot(aes(interval_legnth)) +
+  geom_histogram()
+```
+
+ 
+
+
+
+
